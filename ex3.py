@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-class Neural_net(object):
+class NeuralNet(object):
     """
     create 2 layers neural network, which has an hidden layer.
     classificate to 10 classes of clothes.
@@ -176,7 +176,7 @@ def norm_relu(x):
     return np.maximum(0, x)
 
 
-def showPlt():
+def showPlt(states):
     plt.rcParams['figure.figsize'] = (10.0, 8.0)  # set default size of plots
     plt.rcParams['image.interpolation'] = 'nearest'
     plt.rcParams['image.cmap'] = 'gray'
@@ -185,14 +185,14 @@ def showPlt():
     # Plot the loss function and train / validation accuracies
 
     plt.subplot(2, 1, 1)
-    plt.plot(stats['loss_history'])
+    plt.plot(states['loss_history'])
     plt.title('Loss history')
     plt.xlabel('Iteration')
     plt.ylabel('Loss')
 
     plt.subplot(2, 1, 2)
-    plt.plot(stats['train_acc_history'], label='train')
-    plt.plot(stats['val_acc_history'], label='val')
+    plt.plot(states['train_acc_history'], label='train')
+    plt.plot(states['val_acc_history'], label='val')
     plt.title('Classification accuracy history')
     plt.xlabel('Epoch')
     plt.ylabel('Clasification accuracy')
@@ -227,17 +227,14 @@ if __name__ == '__main__':
     train_X = train_X.reshape(train_size, -1)
     validation_x = validation_x.reshape(validation_size, -1)
     test_x = test_x.reshape(test_size, -1)
-    """
 
-    """
+    net = NeuralNet(train_X.shape[1], numOfClasses=10, numOfLayers=10)
 
-    net = Neural_net(train_X.shape[1], numOfClasses=10, numOfLayers=10)
-
-    params = {'epochs': 10, 'batch_s': 1024, 'learning_rate': 7.5e-4,
+    params = {'epochs': 10, 'batch_s': 1024, 'learning_rate': 0.00075,
               'learning_rate_decay': 0.95, 'reg': 1.0, 'mu': 0.9, 'mu_increase': 1.0, 'verbose': True}
     # Train the network
-    stats = net.train(train_X, train_y, validation_x, validation_y, params)
+    result = net.train(train_X, train_y, validation_x, validation_y, params)
 
     # Predict on the validation set
     val_acc = (validation_y == net.predict(validation_x)).mean()
-    showPlt()
+    showPlt(result)
