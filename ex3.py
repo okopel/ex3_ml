@@ -2,8 +2,8 @@
 # Ori Kopel, Shlomo Rabinovich  #
 # 205533151, 308432517          #
 #################################
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class NeuralNet(object):
@@ -14,19 +14,9 @@ class NeuralNet(object):
     """
 
     def __init__(self, data_size, numOfClasses, numOfLayers):
-        """
-        params:
-        input_size: number of training set examples.
-        hidden_size: number of neurons H in the hidden layer.
-        output_size: number of classes.
-        """
-        # First layer weight
         self.w1 = np.random.randn(data_size, numOfLayers) * 0.0001
-        # First layer biases
         self.w2 = np.random.randn(numOfLayers, numOfClasses) * 0.0001
-        # Second layer weights
         self.bias1 = np.zeros((1, numOfLayers))
-        # Second layer biases
         self.bias2 = np.zeros((1, numOfClasses))
 
     def loss(self, train_x, label_y, reg):
@@ -65,26 +55,24 @@ class NeuralNet(object):
             return scores
 
         # Compute the loss
-        exp_scores = np.exp(scores - (np.max(scores, axis=1, keepdims=True)))  # (x_size,C)
-        pr = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)  # (x_size,C)
-        c_log_pr = -np.log(pr[range(x_size), label_y])  # (x_size,1)
+        exp_scores = np.exp(scores - (np.max(scores, axis=1, keepdims=True)))
+        pr = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+        c_log_pr = -np.log(pr[range(x_size), label_y])
+        reg_loss_func = ((reg * np.sum(w1 * w1)) / 2) + ((reg * np.sum(w2 * w2)) / 2)
         data_loss_func = np.sum(c_log_pr) / x_size
-        reg_loss_func = (reg * np.sum(w1 * w1)) / 2 + (reg * np.sum(w2 * w2)) / 2
         loss = data_loss_func + reg_loss_func
 
         # Backward pass: compute gradients
-        dscores = pr
-        dscores[range(x_size), label_y] -= 1
-        dscores /= x_size
-        d_w2 = np.dot(layer.T, dscores)
-        db2 = np.sum(dscores, axis=0, keepdims=True)
-        dh1 = np.dot(dscores, w2.T)
+        pr[range(x_size), label_y] -= 1
+        pr /= x_size
+        d_w2 = np.dot(layer.T, pr)
+        db2 = np.sum(pr, axis=0, keepdims=True)
+        dh1 = np.dot(pr, w2.T)
         dh1[layer <= 0] = 0
         d_w1 = np.dot(train_x.T, dh1)
         db1 = np.sum(dh1, axis=0, keepdims=True)
         d_w2 += reg * w2
         d_w1 += reg * w1
-
         return loss, {'w1': d_w1, 'bias1': db1, 'w2': d_w2, 'bias2': db2}
 
     def train(self, train_x, train_label, x_val, y_val, param):
