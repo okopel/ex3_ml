@@ -61,8 +61,13 @@ class NeuralNet(object):
         reg_loss_func = ((reg * np.sum(w1 * w1)) / 2) + ((reg * np.sum(w2 * w2)) / 2)
         data_loss_func = np.sum(c_log_pr) / x_size
         loss = data_loss_func + reg_loss_func
+        grad = self.gradient(pr=pr, train_x=train_x, label_y=label_y, layer=layer, reg=reg, w1=w1, w2=w2)
+        return loss, grad
 
+    @staticmethod
+    def gradient(pr, label_y, layer, reg, w1, w2, train_x):
         # Backward pass: compute gradients
+        x_size, y_size = train_x.shape
         pr[range(x_size), label_y] -= 1
         pr /= x_size
         d_w2 = np.dot(layer.T, pr)
@@ -71,9 +76,9 @@ class NeuralNet(object):
         dh1[layer <= 0] = 0
         d_w1 = np.dot(train_x.T, dh1)
         db1 = np.sum(dh1, axis=0, keepdims=True)
-        d_w2 += reg * w2
-        d_w1 += reg * w1
-        return loss, {'w1': d_w1, 'bias1': db1, 'w2': d_w2, 'bias2': db2}
+        d_w2 += (reg * w2)
+        d_w1 += (reg * w1)
+        return {'w1': d_w1, 'bias1': db1, 'w2': d_w2, 'bias2': db2}
 
     def train(self, train_x, train_label, x_val, y_val, param):
 
