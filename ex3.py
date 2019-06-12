@@ -53,14 +53,12 @@ class NeuralNet(object):
         # If the targets are not given then jump out, we're done
         if label_y is None:
             return scores
-
         # Compute the loss
         exp_scores = np.exp(scores - (np.max(scores, axis=1, keepdims=True)))
         pr = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
-        c_log_pr = -np.log(pr[range(x_size), label_y])
-        reg_loss_func = ((reg * np.sum(w1 * w1)) / 2) + ((reg * np.sum(w2 * w2)) / 2)
-        data_loss_func = np.sum(c_log_pr) / x_size
-        loss = data_loss_func + reg_loss_func
+        c_log_pr = np.log(pr[range(x_size), label_y])
+        c_log_pr *= -1
+        loss = (np.sum(c_log_pr) / x_size) + ((reg * np.sum(w1 * w1)) / 2) + ((reg * np.sum(w2 * w2)) / 2)
         grad = self.gradient(pr=pr, train_x=train_x, label_y=label_y, layer=layer, reg=reg, w1=w1, w2=w2)
         return loss, grad
 
