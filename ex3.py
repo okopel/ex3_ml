@@ -19,7 +19,7 @@ class NeuralNet(object):
         self.bias1 = np.zeros((1, numOfLayers))
         self.bias2 = np.zeros((1, numOfClasses))
 
-    def loss(self, train_x, label_y, reg):
+    def loss(self, train_x, label_y, todoRel, reg):
         """
         calc loss & gradient for our net.
 
@@ -45,9 +45,10 @@ class NeuralNet(object):
         w2 = self.w2
         bias2 = self.bias2
         x_size, y_size = train_x.shape
-
+        layer = np.dot(train_x, w1) + bias1
         # Compute the forward pass
-        layer = norm_relu(np.dot(train_x, w1) + bias1)
+        if todoRel:
+            layer = self.norm_relu(layer)
         scores = np.dot(layer, w2) + bias2
 
         # If the targets are not given then jump out, we're done
@@ -103,9 +104,9 @@ class NeuralNet(object):
 
         # Use SGD to optimize the parameters in self.model
         w22, b22, w11, b11 = 0.0, 0.0, 0.0, 0.0
-        loss_history = []
-        train_acc_history = []
-        val_acc_history = []
+        loss_report = []
+        train_acc_report = []
+        val_acc_report = []
 
         for i in range(1, epoch * iterations_per_epoch + 1):
             # shuffle and make batch
@@ -114,8 +115,8 @@ class NeuralNet(object):
             y_batch = train_label[sample_index]
 
             # calc gradients & loss
-            loss_func, gradients = self.loss(x_batch, label_y=y_batch, reg=reg)
-            loss_history.append(loss_func)
+            loss_func, gradients = self.loss(train_x=x_batch, label_y=y_batch, reg=reg, todoRel=True)
+            loss_report.append(loss_func)
             w1 = gradients['w1']
             w2 = gradients['w2']
             b1 = gradients['bias1']
@@ -137,58 +138,66 @@ class NeuralNet(object):
                 epoch = i / iterations_per_epoch
                 train_acc = (self.predict(x_batch) == y_batch).mean()
                 v_acc = (self.predict(x_val) == y_val).mean()
-                train_acc_history.append(train_acc)
-                val_acc_history.append(v_acc)
+                train_acc_report.append(train_acc)
+                val_acc_report.append(v_acc)
                 print("epoch %d / %d: loss %f, train_acc: %f, val_acc: %f" %
                       (epoch, epoch, loss_func, train_acc, v_acc))
-
-                # Decay learning rate
+                # change learning rate
                 lr *= lr_change
                 mu *= mu_increase
-
         return {
-            'loss_history': loss_history,
-            'train_acc_history': train_acc_history,
-            'val_acc_history': val_acc_history,
+            'loss_history': loss_report,
+            'train_acc_history': train_acc_report,
+            'val_acc_history': val_acc_report,
         }
 
     def predict(self, vec):
         # calc in first layer
-        h1 = norm_relu(np.dot(vec, self.w1) + self.bias1)
+        h1 = self.norm_relu(np.dot(vec, self.w1) + self.bias1)
         # calc in second layer
         scores = np.dot(h1, self.w2) + self.bias2
         # choose the class with highest score.
         y_pred = np.argmax(scores, axis=1)
         return y_pred
 
+    @staticmethod
+    def norm_relu(x):
+        # ReLU function
+        return np.maximum(0, x)
 
-def norm_relu(x):
-    # ReLU function
-    return np.maximum(0, x)
+    @staticmethod
+    def showPlt(states):
+        plt.rcParams['figure.figsize'] = (10.0, 8.0)  # set default size of plots
+        plt.rcParams['image.interpolation'] = 'nearest'
+        plt.rcParams['image.cmap'] = 'gray'
+        plt.subplots_adjust(wspace=0, hspace=0.3)
 
+        # Plot the loss function and train / validation accuracies
 
-def showPlt(states):
-    plt.rcParams['figure.figsize'] = (10.0, 8.0)  # set default size of plots
-    plt.rcParams['image.interpolation'] = 'nearest'
-    plt.rcParams['image.cmap'] = 'gray'
-    plt.subplots_adjust(wspace=0, hspace=0.3)
+        plt.subplot(2, 1, 1)
+        plt.plot(states['loss_history'])
+        plt.title('Loss history')
+        plt.xlabel('Iteration')
+        plt.ylabel('Loss')
 
-    # Plot the loss function and train / validation accuracies
+        plt.subplot(2, 1, 2)
+        plt.plot(states['train_acc_history'], label='train')
+        plt.plot(states['val_acc_history'], label='val')
+        plt.title('Classification accuracy history')
+        plt.xlabel('Epoch')
+        plt.ylabel('Clasification accuracy')
+        plt.legend()
+        plt.show()
 
-    plt.subplot(2, 1, 1)
-    plt.plot(states['loss_history'])
-    plt.title('Loss history')
-    plt.xlabel('Iteration')
-    plt.ylabel('Loss')
+    @staticmethod
+    def saveToFile(Paradicts, fileName):
+        np.savetxt(fileName, Paradicts, delimiter='\n', fmt='%d')
 
-    plt.subplot(2, 1, 2)
-    plt.plot(states['train_acc_history'], label='train')
-    plt.plot(states['val_acc_history'], label='val')
-    plt.title('Classification accuracy history')
-    plt.xlabel('Epoch')
-    plt.ylabel('Clasification accuracy')
-    plt.legend()
-    plt.show()
+    def checkTest(self, testing_set):
+        predicts = []
+        for i in testing_set:
+            predicts.append(int(self.predict(i)))
+        return predicts
 
 
 if __name__ == '__main__':
@@ -197,6 +206,7 @@ if __name__ == '__main__':
     train_y = np.loadtxt("train_y", dtype=np.uint8)
     # y_test
     test_x = np.loadtxt("test_x", dtype=np.uint8)
+
     train_size = train_X.shape[0]
     test_size = test_x.shape[0]
 
@@ -224,8 +234,10 @@ if __name__ == '__main__':
     params = {'epochs': 10, 'batch_s': 1024, 'learning_rate': 0.00075,
               'learning_rate_decay': 0.95, 'reg': 1.0, 'mu': 0.9, 'mu_increase': 1.0, 'verbose': True}
     # Train the network
-    result = net.train(train_X, train_y, validation_x, validation_y, params)
-
+    result = net.train(train_x=train_X, train_label=train_y, x_val=validation_x, y_val=validation_y, param=params)
+    # result = net.train(train_x=train_X, train_label=train_y, x_val=test_x, y_val=None, param=params)
+    ans = net.checkTest(test_x)
+    net.saveToFile(ans, "test_y")
     # Predict on the validation set
     val_acc = (validation_y == net.predict(validation_x)).mean()
-    showPlt(result)
+    net.showPlt(result)
